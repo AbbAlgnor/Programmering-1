@@ -1,12 +1,20 @@
 // called when the client connects
+let connected = false;
+let servoAdjustment = 0;
+
 function onConnect() {
+    connected = true;
     // Once a connection has been made, make a subscription and send a message.
     let topic = document.forms["connectionForm"]["topic"].value
     console.log("onConnect");
-    client.subscribe(topic);
+    log("Connected!")
+    client.subscribe("LogTopic");
     message = new Paho.MQTT.Message("Hello from web");
     message.destinationName = topic;
     client.send(message);
+
+    startGamepadInput();
+    startKeyInputs();
 }
 
 // called when the client loses its connection
@@ -14,15 +22,12 @@ function onConnectionLost(responseObject) {
     if (responseObject.errorCode !== 0) {
         console.log("onConnectionLost:" + responseObject.errorMessage);
     }
+    log("Connnnection lost: <span class='text'>ErrorCode: </span>" + responseObject.errorCode, 2)
 }
 
 // called when a message arrives
 function onMessageArrived(message) {
-    console.log("Message:\t" + message.payloadString);
-
-    console.log("Time:\t\t" + Date.now());
-    console.log("delay:\t\t" + (Date.now() - parseInt(message.payloadString)) + "ms");
-
+    log("<span class='topic'>" + message.destinationName + "</span>: " + message.payloadString,)
 }
 
 function send(sendMessage) {
@@ -60,9 +65,7 @@ function connect() {
     let port = parseInt(input["port"].value)
     let topic = input["topic"].value;
 
-    console.log(ip + "\t" + typeof (ip))
-    console.log(port + "\t" + typeof (port))
-    console.log(topic + "\t" + typeof (topic))
+    log(`Connecting to:<span class="text"> <a href="${"ws://" + ip + ":" + port + "/" + topic}">${"ws://" + ip + ":" + port + "/" + topic}</a></span>`)
     // Create a client instance
     client = new Paho.MQTT.Client(ip, port, "/" + topic, "WebClient-LetsHopeOnlyOneConnectionExists");
 
@@ -102,4 +105,28 @@ function syntaxHighlight(json) {
         }
         return '<span class="' + cls + '">' + match + '</span>';
     });
+}
+
+let pageConsole
+
+function getTimestamp() {
+    let time = new Date(Date.now());
+    return `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`;
+}
+
+function log(message, severity = 0) {
+    const severityTags = ["INFO", "WARN", "ERR"];
+
+    format = `<span class="${severityTags[severity]}"><span class="text">[${getTimestamp()}</span> ${severityTags[severity]}<span class="text">]</span> ${message}</span><br/>`;
+
+    if (pageConsole == null)
+        pageConsole = document.getElementById("console");
+    pageConsole.innerHTML += format;
+}
+
+function adjustServo(adjustment) {
+    servoAdjustment += adjustment
+    if (connected) {
+        send({servoOffset: servoAdjustment});
+    }
 }

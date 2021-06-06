@@ -3,6 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <string.h>
 
 #include <config.h>
 
@@ -11,6 +12,7 @@
 
 bool Direction;
 int16_t Input;
+int8 servoOffset = 0;
 uint16_t Output;
 StaticJsonDocument<128> doc;
 
@@ -19,34 +21,49 @@ Servo servo;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
-void callback(char* topic, byte* payload, unsigned int length) {
- 
-  Serial.print("Message arrived in topic: ");
-  Serial.println(topic);
- 
-  Serial.println("Message:");
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  long unsigned int startTime = micros();
 
+  //Serial.print("Message arrived in topic: ");
+  //Serial.println(topic);
+
+  //Serial.println("Message:");
+
+  if (strcmp((char *)payload, "Hello from web666-DriverBot") == 0 || strcmp((char *)payload, "Hello from webrd") == 0)
+  {
+    //Serial.println("Ping");
+    //Serial.println((char *)payload);
+    mqttClient.publish(mqttPubTopic, "Hello From ESP8266");
+
+    return;
+  }
+  //Serial.println((char *)payload);
   deserializeJson(doc, payload);
   serializeJsonPretty(doc, Serial);
 
+  JsonVariant ServoOffset = doc["servoOffset"];
+  if(!ServoOffset.isNull()){
+    servoOffset = ServoOffset;
+    servoOffset = servoOffset * -1;
+  }
+
   uint16 forward = doc["Forward"];
   uint16 backward = doc["Backward"];
-  uint8 turning = int(doc["Turning"])+90;
+  uint8 turning = int(doc["Turning"]) + 90;
 
- 
   Input = forward - backward;
   Direction = (Input > 0 ? HIGH : LOW);
   Output = abs(Input);
 
-
-  Serial.println(Output);
-  Serial.println(turning);
+  //Serial.println(Output);
+  //Serial.println(turning);
 
   analogWrite(motorOutputPin, Output);
   digitalWrite(motorDirectionPin, Direction);
 
-  servo.write(turning);
- 
+  servo.write(turning + servoOffset);
+  Serial.println(micros() - startTime);
 }
 
 void setup()
@@ -86,18 +103,13 @@ void setup()
 
   Serial.println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
-
   mqttClient.setServer(mqttServer, mqttPort);
   mqttClient.setCallback(callback);
-
 
   while (!mqttClient.connected())
   {
     Serial.println("Connecting to mqtt");
     digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
 
     if (mqttClient.connect(mqttClientName, mqttUser, mqttPassword))
     {
@@ -111,8 +123,10 @@ void setup()
     }
   }
 
-  mqttClient.publish(mqttTopic, "Hello from ESP8266");
-  mqttClient.subscribe(mqttTopic);
+  digitalWrite(LED_BUILTIN, LOW);
+
+  mqttClient.publish(mqttPubTopic, "Hello from ESP8266");
+  mqttClient.subscribe(mqttSubTopic);
 }
 
 void loop()

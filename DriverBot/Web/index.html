@@ -27,6 +27,9 @@
         </div>
     </div>
 
+    <button class="adjustServoButton" onclick="adjustServo(-1)">-1</button>
+    <button class="adjustServoButton" onclick="adjustServo(1)">+1</button>
+
     <table cellspacing="0" class="driveButtons">
         <tr>
             <td class="driveButton" onmousedown="send({Forward: 1024, Backward: 0, Turning: 90})">🡼</td>
@@ -46,10 +49,12 @@
         </tr>
     </table>
     <pre id="lastMessage"></pre>
+    <pre id="console"></pre>
 
     <script src="main.js"></script>
     <script src="controller.js"></script>
     <script src="ControllerInput.js"></script>
+    <script src="KeyInput.js"></script>
     <div id="input"></div>
 </body>
 
